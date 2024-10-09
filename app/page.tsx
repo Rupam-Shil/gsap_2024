@@ -1,95 +1,152 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable react-hooks/rules-of-hooks */
+'use client';
+import React, { useEffect, useRef } from 'react';
+import styles from './page.module.scss';
+import { LINKS } from '@/constants/links.contants';
+import gsap from 'gsap';
 
-export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+const circleRadius = 1100;
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+function page() {
+	const cursor = useRef<HTMLDivElement>(null);
+	const gallery = useRef<HTMLDivElement>(null);
+
+	const imageCleanUpListener = (index: number) => () => {
+		const imgs = cursor.current?.querySelectorAll('img');
+		if (imgs?.length) {
+			const lastImg = imgs[imgs.length - 1];
+			[...imgs].forEach((img) => {
+				if (img !== lastImg) {
+					gsap.to(img, {
+						clipPath: 'polygon(0% 0%, 100% 0%, 100% 0%, 0% 0%)',
+						duration: 1,
+						ease: 'power3.out',
+						onComplete: () => {
+							setTimeout(() => {
+								img.remove();
+							}, 1000);
+						},
+					});
+				}
+			});
+			gsap.to(lastImg, {
+				clipPath: 'polygon(0% 0%, 100% 0%, 100% 0%, 0% 0%)',
+				duration: 1,
+				ease: 'power3.out',
+				delay: 0.25,
+			});
+		}
+	};
+
+	const imageListener = (index: number) => (e: MouseEvent) => {
+		const imgSrc = `/page/page-${index % 2}.jpg`;
+		const img = document.createElement('img');
+		img.src = imgSrc;
+		img.classList.add(styles.img);
+		img.style.clipPath = `polygon(0% 100%, 100% 100%, 100% 100%, 0% 100%)`;
+		cursor.current?.appendChild(img);
+		gsap.to(img, {
+			clipPath: 'polygon(0% 100%, 100% 100%, 100% 0%, 0% 0%)',
+			duration: 1,
+			ease: 'power3.out',
+		});
+		e.currentTarget?.addEventListener('mouseout', imageCleanUpListener(index));
+	};
+
+	const handleCircleGeneration = (): HTMLDivElement[] => {
+		const itemsCount = LINKS.length;
+		const centerX = window.innerWidth / 2;
+		const centerY = window.innerHeight / 2;
+		const angleStep = (2 * Math.PI) / itemsCount;
+		const items: HTMLDivElement[] = [];
+
+		for (let i = 0; i < itemsCount; i++) {
+			const item = document.createElement('div');
+			item.classList.add(styles.item);
+			const p = document.createElement('p');
+			p.textContent = LINKS[i].name;
+			const span = document.createElement('span');
+			span.textContent = `(${i + 1})`;
+			item.appendChild(p);
+			p.appendChild(span);
+
+			const angle = i * angleStep;
+			const x = centerX + circleRadius * Math.cos(angle);
+			const y = centerY + circleRadius * Math.sin(angle);
+
+			const rotation = angle * (180 / Math.PI);
+
+			gsap.set(item, {
+				x: x + 'px',
+				y: y + 'px',
+				rotation: rotation + 'deg',
+			});
+			gallery.current?.appendChild(item);
+			item.addEventListener('mouseover', imageListener(i));
+
+			items.push(item);
+		}
+		return items;
+	};
+
+	useEffect(() => {
+		const items = handleCircleGeneration();
+		document.addEventListener('scroll', updateScroll);
+		document.addEventListener('mousemove', followCursor);
+		updateScroll();
+		return () => {
+			document.removeEventListener('scroll', updateScroll);
+			document.removeEventListener('mousemove', followCursor);
+			items.forEach((item, i) => {
+				item.removeEventListener('mouseover', imageListener(i));
+				item.removeEventListener('mouseout', imageCleanUpListener(i));
+			});
+		};
+	}, [cursor, gallery]);
+
+	const updateScroll = () => {
+		const scrollAmount = window.scrollY * 0.0002;
+		const angleIncrement = (2 * Math.PI) / LINKS.length;
+		const centerX = window.innerWidth / 2;
+		const centerY = window.innerHeight / 2;
+
+		document.querySelectorAll(`.${styles.item}`).forEach((item, index) => {
+			const angle = index * angleIncrement - scrollAmount;
+			const x = centerX + circleRadius * Math.cos(angle);
+			const y = centerY + circleRadius * Math.sin(angle);
+			const rotation = angle * (180 / Math.PI);
+			gsap.to(item, {
+				x: x + 'px',
+				y: y + 'px',
+				rotation: rotation + 'deg',
+				duration: 0.05,
+				ease: 'elastic.out(1, 0.3)',
+			});
+		});
+	};
+
+	const followCursor = (e: MouseEvent) => {
+		gsap.to(cursor.current, {
+			x: e.clientX - 150,
+			y: e.clientY - 200,
+			duration: 1,
+			ease: 'power3.out',
+		});
+	};
+
+	return (
+		<section className={styles.page}>
+			<div className={styles.cursor} ref={cursor}></div>
+			<nav className={styles.nav}>
+				<a href="/">Animations</a>
+			</nav>
+			<div className={styles.container}>
+				<div className={styles.gallery} ref={gallery}></div>
+			</div>
+		</section>
+	);
 }
+
+export default page;
