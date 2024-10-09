@@ -6,12 +6,14 @@ import React, { useEffect, useRef } from 'react';
 import styles from './page.module.scss';
 import { LINKS } from '@/constants/links.contants';
 import gsap from 'gsap';
+import { useRouter } from 'next/navigation';
 
 const circleRadius = 1100;
 
 function page() {
 	const cursor = useRef<HTMLDivElement>(null);
 	const gallery = useRef<HTMLDivElement>(null);
+	const router = useRouter();
 
 	const imageCleanUpListener = (index: number) => () => {
 		const imgs = cursor.current?.querySelectorAll('img');
@@ -71,6 +73,9 @@ function page() {
 			span.textContent = `(${i + 1})`;
 			item.appendChild(p);
 			p.appendChild(span);
+			item.onclick = () => {
+				router.push(LINKS[i].link);
+			};
 
 			const angle = i * angleStep;
 			const x = centerX + circleRadius * Math.cos(angle);
